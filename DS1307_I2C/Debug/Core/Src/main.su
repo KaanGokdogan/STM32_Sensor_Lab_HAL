@@ -1,5 +1,6 @@
-../Core/Src/main.c:66:5:main	8	static
-../Core/Src/main.c:111:6:SystemClock_Config	88	static
-../Core/Src/main.c:153:13:MX_I2C1_Init	8	static
-../Core/Src/main.c:187:13:MX_GPIO_Init	56	static
-../Core/Src/main.c:326:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:14:5:main	32	static
+../Core/Src/main.c:67:6:SystemClock_Config	4	static
+../Core/Src/main.c:73:7:Get_Day_Of_Week	56	static
+../Core/Src/main.c:81:6:Number_To_String	16	static
+../Core/Src/main.c:97:7:Time_To_String	16	static
+../Core/Src/main.c:115:7:Date_To_String	16	static

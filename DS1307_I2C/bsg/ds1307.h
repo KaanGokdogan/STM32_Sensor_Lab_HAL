@@ -17,7 +17,7 @@
 
 
 /*****		Device Address		*****/
-#define DS1307_I2C_ADDRESS      	0x68
+#define DS1307_I2C_ADDRESS      	(0x68 << 1)
 
 
 /*****		Register Addresses	*****/
@@ -45,8 +45,8 @@
 /*****		Application Configurable Items	*****/
 #define DS1307_I2C					I2C1
 #define DS1307_I2C_GPIO_PORT		GPIOB
-#define DS1307_I2C_SDA_PIN			GPIO_PIN_NO_7
-#define DS1307_I2C_SCL_PIN			GPIO_PIN_NO_6
+#define DS1307_I2C_SDA_PIN			GPIO_PIN_9
+#define DS1307_I2C_SCL_PIN			GPIO_PIN_6
 #define DS1307_I2C_SPEED			I2C_SCL_SPEED_SM
 #define DS1307_I2C_PUPD				GPIO_NO_PU			// No internal pullups
 
@@ -70,11 +70,19 @@ typedef struct
 
 
 /*****		Functions	*****/
-uint8_t ds1307_Init(void);
+uint8_t DS1307_Init(void);
+void Init_Systick_Timer(uint32_t tick_hz);
 void DS1307_Set_Current_Time(RTC_time_t *rtc_time);
 void DS1307_Get_Current_Time(RTC_time_t *rtc_time);
-void DS1307_Set_Current_Date(RTC_time_t *rtc_date);
-void DS1307_Get_Current_Date(RTC_time_t *rtc_date);
+void DS1307_Set_Current_Date(RTC_date_t *rtc_date);
+void DS1307_Get_Current_Date(RTC_date_t *rtc_date);
+uint8_t Binary_To_BCD(uint8_t Value);
+uint8_t BCD_To_Binary(uint8_t Value);
+char* Get_Day_Of_Week(uint8_t i);
+void Number_To_String(uint8_t Number, char* buf);
+char* Time_To_String(RTC_time_t *rtc_time);
+char* Date_To_String(RTC_date_t *rtc_date);
+
 
 
 #endif /* DS1307_H_ */
