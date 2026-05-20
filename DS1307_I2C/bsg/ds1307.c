@@ -7,45 +7,71 @@
 
 #include "ds1307.h"
 
-#define SYSTICK_TIM_CLK 16000000UL
 
 I2C_HandleTypeDef ds1307I2cHandle;
 
-static void DS1307_I2C_Pin_Config(void);
-static void DS1307_I2C_Config(void);
-static void DS1307_Write(uint8_t Value, uint8_t RegAddr);
-static uint8_t DS1307_Read(uint8_t RegAddr);
+/*
+ * Private helper function prototypes
+ */
+static void _DS1307_I2C_Pin_Config(void);
+static void _DS1307_I2C_Config(void);
+static void _DS1307_Write(uint8_t Value, uint8_t RegAddr);
+static uint8_t _DS1307_Read(uint8_t RegAddr);
 
 
-// returns 1 : CH = 1 ; init failed
-// returns 0 : CH = 0 ; init success
+
+/************************************************************************
+ * @fn				- DS1307_Init
+ *
+ * @brief			- Initializes the DS1307 RTC module and I2C peripheral.
+ *
+ * @param[in]		- none
+ *
+ * @return			- uint8_t: 0 if initialization is successful,
+ * 							   1 if clock halt bit is set (init failed).
+ *
+ * @Note			- Clears the Clock Halt (CH) bit to start the oscillator.
+ ************************************************************************/
 uint8_t DS1307_Init()
 {
 	// 1. Init the I2C pins
-	DS1307_I2C_Pin_Config();
+	_DS1307_I2C_Pin_Config();
 
 	// 2. Initialize the I2C peripheral
-	DS1307_I2C_Config();
+	_DS1307_I2C_Config();
 
 	// 3. Make clock halt = 0
-	DS1307_Write(0x00, DS1307_ADDR_SEC);
+	_DS1307_Write(0x00, DS1307_ADDR_SEC);
 
 	// 4. Read back clock halt bit
-	uint8_t clock_State = DS1307_Read(DS1307_ADDR_SEC);
+	uint8_t clock_State = _DS1307_Read(DS1307_ADDR_SEC);
 
 	return (clock_State >> 7) & 0x1;
 }
 
 
+/************************************************************************
+ * @fn				- DS1307_Set_Current_Time
+ *
+ * @brief			- Sets the current time in the DS1307 RTC registers.
+ *
+ * @param[in]		- rtc_time: Pointer to the RTC_time_t structure containing
+ * 					  the time to be set.
+ *
+ * @return			- none
+ *
+ * @Note			- Handles the conversion from binary to BCD format and
+ * 					  configures 12-hour or 24-hour mode accordingly.
+ ************************************************************************/
 void DS1307_Set_Current_Time(RTC_time_t *rtc_time)
 {
 	uint8_t seconds, hours;
 
 	seconds = Binary_To_BCD(rtc_time->sec);
 	seconds &= ~( 1 << 7);
-	DS1307_Write(seconds, DS1307_ADDR_SEC);
+	_DS1307_Write(seconds, DS1307_ADDR_SEC);
 
-	DS1307_Write(Binary_To_BCD(rtc_time->min), DS1307_ADDR_MIN);
+	_DS1307_Write(Binary_To_BCD(rtc_time->min), DS1307_ADDR_MIN);
 
 	hours = Binary_To_BCD(rtc_time->hour);
 	if(rtc_time->time_Format == TIME_FORMAT_24HR)
@@ -57,21 +83,33 @@ void DS1307_Set_Current_Time(RTC_time_t *rtc_time)
 		hours |= ( 1 << 6);
 		hours = (rtc_time->time_Format == TIME_FORMAT_12HRS_PM) ? hours | ( 1 << 5) : hours & ~( 1 << 5);
 	}
-	DS1307_Write(hours, DS1307_ADDR_HOUR);
+	_DS1307_Write(hours, DS1307_ADDR_HOUR);
 }
 
 
+/************************************************************************
+ * @fn				- DS1307_Get_Current_Time
+ *
+ * @brief			- Reads the current time from the DS1307 RTC registers.
+ *
+ * @param[in]		- rtc_time: Pointer to the RTC_time_t structure where
+ * 					  the read time will be stored.
+ *
+ * @return			- none
+ *
+ * @Note			- Handles the conversion from BCD format to binary.
+ ************************************************************************/
 void DS1307_Get_Current_Time(RTC_time_t *rtc_time)
 {
 	uint8_t seconds, hours;
 
-	seconds = DS1307_Read(DS1307_ADDR_SEC);
+	seconds = _DS1307_Read(DS1307_ADDR_SEC);
 	seconds &= ~( 1 << 7);
 	rtc_time->sec = BCD_To_Binary(seconds);
 
-	rtc_time->min = BCD_To_Binary(DS1307_Read(DS1307_ADDR_MIN));
+	rtc_time->min = BCD_To_Binary(_DS1307_Read(DS1307_ADDR_MIN));
 
-	hours = DS1307_Read(DS1307_ADDR_HOUR);
+	hours = _DS1307_Read(DS1307_ADDR_HOUR);
 	if( hours & ( 1 << 6))
 	{
 		// 12 hour format
@@ -82,33 +120,72 @@ void DS1307_Get_Current_Time(RTC_time_t *rtc_time)
 	{
 		// 24 hour format
 		rtc_time->time_Format = TIME_FORMAT_24HR;
-
 	}
 	rtc_time->hour = BCD_To_Binary(hours);
-
-
 }
 
 
+/************************************************************************
+ * @fn				- DS1307_Set_Current_Date
+ *
+ * @brief			- Sets the current date in the DS1307 RTC registers.
+ *
+ * @param[in]		- rtc_date: Pointer to the RTC_date_t structure containing
+ * 					  the date to be set.
+ *
+ * @return			- none
+ *
+ * @Note			- Converts the date, month, year, and day to BCD before writing.
+ ************************************************************************/
 void DS1307_Set_Current_Date(RTC_date_t *rtc_date)
 {
-	DS1307_Write(Binary_To_BCD(rtc_date->date), DS1307_ADDR_DATE);
-	DS1307_Write(Binary_To_BCD(rtc_date->day), DS1307_ADDR_DAY);
-	DS1307_Write(Binary_To_BCD(rtc_date->month), DS1307_ADDR_MONTH);
-	DS1307_Write(Binary_To_BCD(rtc_date->year), DS1307_ADDR_YEAR);
+	_DS1307_Write(Binary_To_BCD(rtc_date->date), DS1307_ADDR_DATE);
+	_DS1307_Write(Binary_To_BCD(rtc_date->day), DS1307_ADDR_DAY);
+	_DS1307_Write(Binary_To_BCD(rtc_date->month), DS1307_ADDR_MONTH);
+	_DS1307_Write(Binary_To_BCD(rtc_date->year), DS1307_ADDR_YEAR);
 }
 
 
+/************************************************************************
+ * @fn				- DS1307_Get_Current_Date
+ *
+ * @brief			- Reads the current date from the DS1307 RTC registers.
+ *
+ * @param[in]		- rtc_date: Pointer to the RTC_date_t structure where
+ * 					  the read date will be stored.
+ *
+ * @return			- none
+ *
+ * @Note			- Converts the BCD format data back to binary.
+ ************************************************************************/
 void DS1307_Get_Current_Date(RTC_date_t *rtc_date)
 {
-	rtc_date->date = BCD_To_Binary(DS1307_Read(DS1307_ADDR_DATE));
-	rtc_date->day = BCD_To_Binary(DS1307_Read(DS1307_ADDR_DAY));
-	rtc_date->month = BCD_To_Binary(DS1307_Read(DS1307_ADDR_MONTH));
-	rtc_date->year = BCD_To_Binary(DS1307_Read(DS1307_ADDR_YEAR));
+	rtc_date->date = BCD_To_Binary(_DS1307_Read(DS1307_ADDR_DATE));
+	rtc_date->day = BCD_To_Binary(_DS1307_Read(DS1307_ADDR_DAY));
+	rtc_date->month = BCD_To_Binary(_DS1307_Read(DS1307_ADDR_MONTH));
+	rtc_date->year = BCD_To_Binary(_DS1307_Read(DS1307_ADDR_YEAR));
 }
 
-
-static void DS1307_I2C_Pin_Config(void)
+/************************************************************************
+ *						PRIVATE HELPER FUNCTIONS
+ ************************************************************************/
+/************************************************************************
+ * @fn				- _DS1307_I2C_Pin_Config
+ *
+ * @brief			- Configures the GPIO pins for I2C communication.
+ *
+ * @internal
+ * This is a private helper function. It is not exposed to the user application.
+ * It isolates the low-level hardware pin initialization from the main RTC logic.
+ *
+ * @param[in]		- none
+ *
+ * @return			- none
+ *
+ * @Note			- Configures PB6 (SCL) and PB9 (SDA) in Alternate
+ * 					 Function Open-Drain mode.
+ ************************************************************************/
+static void _DS1307_I2C_Pin_Config(void)
 {
 	GPIO_InitTypeDef ds1307_I2c_Sda, ds1307_I2c_Scl;
 
@@ -141,7 +218,22 @@ static void ErrorHandler(void)
 }
 
 
-static void DS1307_I2C_Config(void)
+/************************************************************************
+ * @fn				- _DS1307_I2C_Config
+ *
+ * @brief			- Configures the I2C peripheral settings for the RTC.
+ *
+ * @internal
+ * This is a private helper function. It hides the HAL-specific I2C
+ * configuration structures from the high-level RTC driver API.
+ *
+ * @param[in]		- none
+ *
+ * @return			- none
+ *
+ * @Note			- Configures I2C1 with 100 kHz standard mode speed.
+ ************************************************************************/
+static void _DS1307_I2C_Config(void)
 {
 	__HAL_RCC_I2C1_CLK_ENABLE();
 	ds1307I2cHandle.Instance = I2C1;
@@ -161,7 +253,24 @@ static void DS1307_I2C_Config(void)
 }
 
 
-static void DS1307_Write(uint8_t Value, uint8_t RegAddr)
+/************************************************************************
+ * @fn				- _DS1307_Write
+ *
+ * @brief			- Writes a 1-byte value to the specified DS1307 register.
+ *
+ * @internal
+ * This is a private helper function. It is not exposed to the user application.
+ * It encapsulates the raw HAL I2C transmission logic to prevent direct hardware
+ * manipulation from higher layers.
+ *
+ * @param[in]		- Value: The 8-bit data to be written.
+ * @param[in]		- RegAddr: The target register address inside the RTC.
+ *
+ * @return			- none
+ *
+ * @Note			- Uses HAL I2C Master Transmit function in polling mode.
+ ************************************************************************/
+static void _DS1307_Write(uint8_t Value, uint8_t RegAddr)
 {
 	uint8_t tx_Data[2];
 	tx_Data[0] = RegAddr;
@@ -171,7 +280,23 @@ static void DS1307_Write(uint8_t Value, uint8_t RegAddr)
 }
 
 
-static uint8_t DS1307_Read(uint8_t RegAddr)
+/************************************************************************
+ * @fn				- _DS1307_Read
+ *
+ * @brief			- Reads a 1-byte value from the specified DS1307 register.
+ *
+ * @internal
+ * This is a private helper function. It hides the sequential I2C transmission
+ * and reception process (writing the register address, then reading the data)
+ * from the high-level API.
+ *
+ * @param[in]		- RegAddr: The target register address to read from.
+ *
+ * @return			- uint8_t: The 8-bit data read from the register.
+ *
+ * @Note			- Sends the register address first, then reads the data.
+ ************************************************************************/
+static uint8_t _DS1307_Read(uint8_t RegAddr)
 {
 	uint8_t receive_Data;
 
@@ -182,6 +307,20 @@ static uint8_t DS1307_Read(uint8_t RegAddr)
 }
 
 
+/*************************************************************************
+ * 							UTILITY FUNCTIONS
+ ************************************************************************/
+/************************************************************************
+ * @fn				- Binary_To_BCD
+ *
+ * @brief			- Converts a standard binary/decimal value to Binary Coded Decimal (BCD).
+ *
+ * @param[in]		- Value: The binary value to be converted.
+ *
+ * @return			- uint8_t: The BCD formatted result.
+ *
+ * @Note			- RTC hardware registers expect data in BCD format.
+ ************************************************************************/
 uint8_t Binary_To_BCD(uint8_t Value)
 {
 	uint8_t first_Digit, second_Digit, bcd;
@@ -198,6 +337,17 @@ uint8_t Binary_To_BCD(uint8_t Value)
 }
 
 
+/************************************************************************
+ * @fn				- BCD_To_Binary
+ *
+ * @brief			- Converts a Binary Coded Decimal (BCD) value to standard binary.
+ *
+ * @param[in]		- Value: The BCD value to be converted.
+ *
+ * @return			- uint8_t: The standard binary/decimal formatted result.
+ *
+ * @Note			- Used when reading raw values from RTC registers.
+ ************************************************************************/
 uint8_t BCD_To_Binary(uint8_t Value)
 {
 	uint8_t first_Digit, second_Digit;
@@ -207,55 +357,3 @@ uint8_t BCD_To_Binary(uint8_t Value)
 
 	return first_Digit + second_Digit;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
