@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <math.h>
 
 /* USER CODE END Includes */
 
@@ -41,25 +42,31 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-
 TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN PV */
+float roll_Angle;
+int16_t kalman_roll_Angle;
+int16_t roll_Angle_Filtered;
 
 /* USER CODE END PV */
+
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM6_Init(void);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-mpu6050_accel_data_t g_accel_data;
+mpu6050_accel_data_t g_Accel_Data;
+mpu6050_accel_offset_t error_Offset;
+
 /* USER CODE END 0 */
 
 /**
@@ -94,12 +101,20 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+
+  printf("Kod calisiyor\r\n");
+
   if (MPU6050_Init(&hi2c1, MPU6050_I2C_ADDR) != MPU6050_OK)
   {
 	  Error_Handler();
   }
-  /* USER CODE END 2 */
+  else
+  {
+	  // Sensor working
+	  MPU6050_Calibrate(&hi2c1, MPU6050_I2C_ADDR, &error_Offset, 1000);
+  }
 
+  /* USER CODE END 2 */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -107,14 +122,21 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if (MPU6050_Read_Accelerometer_Data(&hi2c1, MPU6050_I2C_ADDR, &g_accel_data) != MPU6050_OK)
+	  if (MPU6050_Read_Accelerometer_Data(&hi2c1, MPU6050_I2C_ADDR, &g_Accel_Data) != MPU6050_OK)
 	  {
 		  Error_Handler();
 	  }
 
+	  g_Accel_Data = MPU6050_Accelerometer_Calibration_Data(&error_Offset, &g_Accel_Data);
+	  printf("Accel X: %d | Y: %d | Z: %d\r\n", g_Accel_Data.x, g_Accel_Data.y, g_Accel_Data.z);
+
+	  roll_Angle = atan2(g_Accel_Data.y, g_Accel_Data.z) * (180.0 / M_PI);
+
+	  printf("Roll angle:  %f\r\n", roll_Angle);
   }
   /* USER CODE END 3 */
 }
+
 
 /**
   * @brief System Clock Configuration
@@ -193,7 +215,6 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
