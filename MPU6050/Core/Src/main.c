@@ -42,6 +42,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c3;
+
 TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN PV */
@@ -51,13 +53,12 @@ int16_t roll_Angle_Filtered;
 
 /* USER CODE END PV */
 
-
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM6_Init(void);
-
+static void MX_I2C3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -77,7 +78,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+  float dt = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -100,9 +101,11 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_TIM6_Init();
+  MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
 
-  printf("Kod calisiyor\r\n");
+  KalmanFilter kalman_Filter;
+  Kalman_Filter_Init(&kalman_Filter);
 
   if (MPU6050_Init(&hi2c1, MPU6050_I2C_ADDR) != MPU6050_OK)
   {
@@ -114,7 +117,17 @@ int main(void)
 	  MPU6050_Calibrate(&hi2c1, MPU6050_I2C_ADDR, &error_Offset, 1000);
   }
 
+
+  if (MPU6050_Configure_Low_Pass_Filter(&hi2c1,DLPF_CFG_21HZ) != MPU6050_OK)
+  {
+	  Error_Handler();
+  }
+
+  uint32_t previous_Tick = HAL_GetTick();
+
+
   /* USER CODE END 2 */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -122,6 +135,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  uint32_t current_Tick = HAL_GetTick();
+	  dt = (current_Tick - previous_Tick) / 1000.0f;
+	  previous_Tick = current_Tick;
+
 	  if (MPU6050_Read_Accelerometer_Data(&hi2c1, MPU6050_I2C_ADDR, &g_Accel_Data) != MPU6050_OK)
 	  {
 		  Error_Handler();
@@ -131,12 +148,11 @@ int main(void)
 	  printf("Accel X: %d | Y: %d | Z: %d\r\n", g_Accel_Data.x, g_Accel_Data.y, g_Accel_Data.z);
 
 	  roll_Angle = atan2(g_Accel_Data.y, g_Accel_Data.z) * (180.0 / M_PI);
-
-	  printf("Roll angle:  %f\r\n", roll_Angle);
+	  roll_Angle_Filtered = (int16_t)Kalman_Filter_Get_Angle(&kalman_Filter, roll_Angle, dt);
+	  printf("Roll angle:  %d\r\n", roll_Angle_Filtered);
   }
   /* USER CODE END 3 */
 }
-
 
 /**
   * @brief System Clock Configuration
@@ -215,6 +231,41 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief I2C3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C3_Init(void)
+{
+
+  /* USER CODE BEGIN I2C3_Init 0 */
+
+  /* USER CODE END I2C3_Init 0 */
+
+  /* USER CODE BEGIN I2C3_Init 1 */
+
+  /* USER CODE END I2C3_Init 1 */
+  hi2c3.Instance = I2C3;
+  hi2c3.Init.ClockSpeed = 100000;
+  hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c3.Init.OwnAddress1 = 0;
+  hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c3.Init.OwnAddress2 = 0;
+  hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C3_Init 2 */
+
+  /* USER CODE END I2C3_Init 2 */
+
 }
 
 /**
