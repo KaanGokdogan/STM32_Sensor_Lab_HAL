@@ -44,31 +44,51 @@
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c3;
 
-TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim4;
 
-/* USER CODE BEGIN PV */
+
+mpu6050_accel_data_t g_Accel_Data;
+mpu6050_accel_offset_t error_Offset;
+
 float roll_Angle;
 int16_t kalman_roll_Angle;
 int16_t roll_Angle_Filtered;
 
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_TIM6_Init(void);
 static void MX_I2C3_Init(void);
-/* USER CODE BEGIN PFP */
+static void MX_TIM4_Init(void);
 
-/* USER CODE END PFP */
 
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-mpu6050_accel_data_t g_Accel_Data;
-mpu6050_accel_offset_t error_Offset;
+#define PWM_PULSE_MIN 0
+#define PWM_PULSE_MAX  40
 
-/* USER CODE END 0 */
+#define ANGLE_POS_MIN 0
+#define ANGLE_POS_MAX 90
+
+
+
+// Map function: re-maps a number from one range to another
+long map(long x, long in_min, long in_max, long out_min, long out_max) {
+    // Perform  mapping
+    long result = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+
+    // Clamp the result to the output range
+    if (result > out_max) {
+        result = out_max;
+    } else if (result < out_min) {
+        result = out_min;
+    }
+
+    return result;
+}
+
+
+void change_pwm_duty_cycle(uint32_t pwm_pulse, uint8_t timer_channel) {
+	__HAL_TIM_SET_COMPARE(&htim4, timer_channel, pwm_pulse);
+}
+
 
 /**
   * @brief  The application entry point.
@@ -76,33 +96,14 @@ mpu6050_accel_offset_t error_Offset;
   */
 int main(void)
 {
-
-  /* USER CODE BEGIN 1 */
   float dt = 0;
-  /* USER CODE END 1 */
 
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
-  MX_TIM6_Init();
   MX_I2C3_Init();
-  /* USER CODE BEGIN 2 */
+  MX_TIM4_Init();
 
   KalmanFilter kalman_Filter;
   Kalman_Filter_Init(&kalman_Filter);
@@ -117,24 +118,48 @@ int main(void)
 	  MPU6050_Calibrate(&hi2c1, MPU6050_I2C_ADDR, &error_Offset, 1000);
   }
 
-
   if (MPU6050_Configure_Low_Pass_Filter(&hi2c1,DLPF_CFG_21HZ) != MPU6050_OK)
   {
 	  Error_Handler();
   }
 
+//  if (MPU6050_Configure_Gyro_Range(&hi2c1, FS_SEL_500_DEGREES) != MPU6050_OK)
+//  {
+//	  Error_Handler();
+//  }
+
+//  if (MPU6050_Configure_Accel_Range(&hi2c1, AFS_SEL_2G) != MPU6050_OK)
+//  {
+//	  Error_Handler();
+//  }
+
+
+  __HAL_TIM_ENABLE_IT(&htim4, TIM_IT_UPDATE);
+   if( HAL_TIM_PWM_Start_IT(&htim4,TIM_CHANNEL_1) != HAL_OK)
+   {
+ 	  Error_Handler();
+   }
+
+   if( HAL_TIM_PWM_Start_IT(&htim4,TIM_CHANNEL_2) != HAL_OK)
+   {
+ 	  Error_Handler();
+   }
+
+   if( HAL_TIM_PWM_Start_IT(&htim4,TIM_CHANNEL_3) != HAL_OK)
+   {
+ 	  Error_Handler();
+   }
+
+   if( HAL_TIM_PWM_Start_IT(&htim4,TIM_CHANNEL_4) != HAL_OK)
+   {
+ 	  Error_Handler();
+   }
+
   uint32_t previous_Tick = HAL_GetTick();
 
 
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
-
-    /* USER CODE BEGIN 3 */
 	  uint32_t current_Tick = HAL_GetTick();
 	  dt = (current_Tick - previous_Tick) / 1000.0f;
 	  previous_Tick = current_Tick;
@@ -150,8 +175,12 @@ int main(void)
 	  roll_Angle = atan2(g_Accel_Data.y, g_Accel_Data.z) * (180.0 / M_PI);
 	  roll_Angle_Filtered = (int16_t)Kalman_Filter_Get_Angle(&kalman_Filter, roll_Angle, dt);
 	  printf("Roll angle:  %d\r\n", roll_Angle_Filtered);
+
+	  uint8_t channel1 = (roll_Angle_Filtered < 0) ? TIM_CHANNEL_2 : TIM_CHANNEL_4;
+	  roll_Angle_Filtered = (roll_Angle_Filtered < 0) ? -roll_Angle_Filtered : roll_Angle_Filtered;
+	  uint32_t pwm_pulse1 = map(roll_Angle_Filtered, ANGLE_POS_MIN, ANGLE_POS_MAX, PWM_PULSE_MIN, PWM_PULSE_MAX);
+	  change_pwm_duty_cycle(pwm_pulse1, channel1);
   }
-  /* USER CODE END 3 */
 }
 
 /**
@@ -269,40 +298,75 @@ static void MX_I2C3_Init(void)
 }
 
 /**
-  * @brief TIM6 Initialization Function
+  * @brief TIM4 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM6_Init(void)
+static void MX_TIM4_Init(void)
 {
 
-  /* USER CODE BEGIN TIM6_Init 0 */
+  /* USER CODE BEGIN TIM4_Init 0 */
 
-  /* USER CODE END TIM6_Init 0 */
+  /* USER CODE END TIM4_Init 0 */
 
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
 
-  /* USER CODE BEGIN TIM6_Init 1 */
+  /* USER CODE BEGIN TIM4_Init 1 */
 
-  /* USER CODE END TIM6_Init 1 */
-  htim6.Instance = TIM6;
-  htim6.Init.Prescaler = 0;
-  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim6.Init.Period = 65535;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 199;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 39;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
   {
     Error_Handler();
   }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN TIM6_Init 2 */
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 16;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.Pulse = 8;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.Pulse = 0;
+  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
 
-  /* USER CODE END TIM6_Init 2 */
+  /* USER CODE END TIM4_Init 2 */
+  HAL_TIM_MspPostInit(&htim4);
 
 }
 
@@ -333,8 +397,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(OTG_FS_PowerSwitchOn_GPIO_Port, OTG_FS_PowerSwitchOn_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
-                          |Audio_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Audio_RST_GPIO_Port, Audio_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : CS_I2C_SPI_Pin */
   GPIO_InitStruct.Pin = CS_I2C_SPI_Pin;
@@ -394,15 +457,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(CLK_IN_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD4_Pin LD3_Pin LD5_Pin LD6_Pin
-                           Audio_RST_Pin */
-  GPIO_InitStruct.Pin = LD4_Pin|LD3_Pin|LD5_Pin|LD6_Pin
-                          |Audio_RST_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
-
   /*Configure GPIO pins : I2S3_MCK_Pin I2S3_SCK_Pin I2S3_SD_Pin */
   GPIO_InitStruct.Pin = I2S3_MCK_Pin|I2S3_SCK_Pin|I2S3_SD_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -424,6 +478,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : Audio_RST_Pin */
+  GPIO_InitStruct.Pin = Audio_RST_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(Audio_RST_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : OTG_FS_OverCurrent_Pin */
   GPIO_InitStruct.Pin = OTG_FS_OverCurrent_Pin;
