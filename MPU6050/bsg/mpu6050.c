@@ -15,6 +15,10 @@
 
 static uint8_t mpu6050_I2c_Addr;
 
+
+/*
+ * Internal helper function prototypes
+ */
 mpu6050_status_t _MPU6050_Read_Byte(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, uint8_t *data);
 mpu6050_status_t _MPU6050_Read(I2C_HandleTypeDef *hi2c, uint8_t reg_Base_Addr, uint8_t *buffer, uint32_t n_Bytes);
 mpu6050_status_t _MPU6050_Write_Byte(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, uint8_t data);
@@ -22,6 +26,18 @@ mpu6050_status_t _MPU6050_Write(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, uint8
 
 
 
+/************************************************************************
+ * @fn				- MPU6050_Init
+ *
+ * @brief			- Initializes the MPU6050 sensor over I2C.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- i2c_Dev_Addr: I2C device address of the MPU6050.
+ *
+ * @return			- mpu6050_status_t: MPU6050_OK on success, MPU6050_ERR on fail.
+ *
+ * @Note			- Wakes up the device by clearing the sleep mode bit.
+ ************************************************************************/
 mpu6050_status_t MPU6050_Init(I2C_HandleTypeDef *hi2c, uint8_t i2c_Dev_Addr)
 {
 	mpu6050_I2c_Addr = i2c_Dev_Addr;
@@ -66,6 +82,22 @@ mpu6050_status_t MPU6050_Init(I2C_HandleTypeDef *hi2c, uint8_t i2c_Dev_Addr)
 }
 
 
+/************************************************************************
+ * @fn				- _MPU6050_Read_Byte
+ *
+ * @brief			- Reads a single byte from a specific MPU6050 register.
+ *
+ * @internal
+ * This is a private helper function used to isolate HAL I2C dependencies.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- reg_Addr: The internal register address of the MPU6050.
+ * @param[out]		- data: Pointer to the variable where the read byte will be stored.
+ *
+ * @return			- mpu6050_status_t: MPU6050_OK on success, MPU6050_ERR on failure.
+ *
+ * @Note			- Uses a predefined I2C_TIMEOUT for blocking protection.
+ ************************************************************************/
 mpu6050_status_t _MPU6050_Read_Byte(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, uint8_t *data)
 {
 	HAL_StatusTypeDef status = HAL_I2C_Mem_Read(hi2c, (mpu6050_I2c_Addr << 1), reg_Addr, I2C_MEMADD_SIZE_8BIT , data, 1, I2C_TIMEOUT);
@@ -74,6 +106,23 @@ mpu6050_status_t _MPU6050_Read_Byte(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, u
 }
 
 
+/************************************************************************
+ * @fn				- _MPU6050_Read
+ *
+ * @brief			- Reads a burst of multiple bytes starting from a specific register.
+ *
+ * @internal
+ * This is a private helper function used to read multi-byte data (like X, Y, Z axes).
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- reg_Base_Addr: The starting register address for the burst read.
+ * @param[out]		- buffer: Pointer to the array where the read bytes will be stored.
+ * @param[in]		- n_Bytes: The number of bytes to read sequentially.
+ *
+ * @return			- mpu6050_status_t: MPU6050_OK on success, MPU6050_ERR on failure.
+ *
+ * @Note			- Uses HAL_MAX_DELAY to ensure the entire burst completes.
+ ************************************************************************/
 mpu6050_status_t _MPU6050_Read(I2C_HandleTypeDef *hi2c, uint8_t reg_Base_Addr, uint8_t *buffer, uint32_t n_Bytes)
 {
 	HAL_StatusTypeDef status = HAL_I2C_Mem_Read(hi2c, mpu6050_I2c_Addr << 1, reg_Base_Addr, I2C_MEMADD_SIZE_8BIT , buffer, n_Bytes, HAL_MAX_DELAY);
@@ -82,6 +131,22 @@ mpu6050_status_t _MPU6050_Read(I2C_HandleTypeDef *hi2c, uint8_t reg_Base_Addr, u
 }
 
 
+/************************************************************************
+ * @fn				- _MPU6050_Write_Byte
+ *
+ * @brief			- Writes a single byte to a specific MPU6050 register.
+ *
+ * @internal
+ * This is a private helper function used to configure the sensor.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- reg_Addr: The target internal register address of the MPU6050.
+ * @param[in]		- data: The 8-bit value to write into the register.
+ *
+ * @return			- mpu6050_status_t: MPU6050_OK on success, MPU6050_ERR on failure.
+ *
+ * @Note			- Uses a predefined I2C_TIMEOUT.
+ ************************************************************************/
 mpu6050_status_t _MPU6050_Write_Byte(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, uint8_t data)
 {
 	HAL_StatusTypeDef status = \
@@ -91,6 +156,23 @@ mpu6050_status_t _MPU6050_Write_Byte(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, 
 }
 
 
+/************************************************************************
+ * @fn				- _MPU6050_Write
+ *
+ * @brief			- Writes a burst of bytes to the MPU6050 starting from a register.
+ *
+ * @internal
+ * This is a private helper function.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- reg_Addr: The starting register address.
+ * @param[in]		- data: Pointer to the array of data to be written.
+ * @param[in]		- len: The number of bytes to write.
+ *
+ * @return			- mpu6050_status_t: MPU6050_OK on success, MPU6050_ERR on failure.
+ *
+ * @Note			- Handled with a standard I2C_TIMEOUT.
+ ************************************************************************/
 mpu6050_status_t _MPU6050_Write(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, uint8_t *data, uint32_t len)
 {
 	HAL_StatusTypeDef status = HAL_I2C_Mem_Write(hi2c, mpu6050_I2c_Addr << 1, reg_Addr, I2C_MEMADD_SIZE_8BIT , data, len, I2C_TIMEOUT);
@@ -99,6 +181,20 @@ mpu6050_status_t _MPU6050_Write(I2C_HandleTypeDef *hi2c, uint8_t reg_Addr, uint8
 }
 
 
+/************************************************************************
+ *						PUBLIC FUNCTIONS
+ ************************************************************************/
+/************************************************************************
+ * @fn				- MPU6050_Read_Accelerometer_Data
+ *
+ * @brief			- Reads 6 bytes of raw accelerometer data (X, Y, Z).
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- i2c_Dev_Addr: I2C device address (unused internally).
+ * @param[out]		- accel_Data: Pointer to struct to store the parsed data.
+ *
+ * @return			- mpu6050_status_t: Status of the I2C read operation.
+ ************************************************************************/
 mpu6050_status_t MPU6050_Read_Accelerometer_Data(I2C_HandleTypeDef *hi2c, uint8_t i2c_Dev_Addr, mpu6050_accel_data_t *accel_Data)
 {
 	uint8_t raw_Data[6];
@@ -113,6 +209,17 @@ mpu6050_status_t MPU6050_Read_Accelerometer_Data(I2C_HandleTypeDef *hi2c, uint8_
 	return MPU6050_OK;
 }
 
+
+/************************************************************************
+ * @fn				- MPU6050_Accelerometer_Calibration_Data
+ *
+ * @brief			- Applies calculated calibration offsets to raw data.
+ *
+ * @param[in]		- error_Offset: Pointer to the calculated offset values.
+ * @param[in]		- raw_Data: Pointer to the newly read raw data.
+ *
+ * @return			- mpu6050_accel_data_t: The calibrated acceleration data.
+ ************************************************************************/
 mpu6050_accel_data_t MPU6050_Accelerometer_Calibration_Data(mpu6050_accel_offset_t *error_Offset, mpu6050_accel_data_t *raw_Data)
 {
 	mpu6050_accel_data_t accel_Calibrated;
@@ -125,7 +232,21 @@ mpu6050_accel_data_t MPU6050_Accelerometer_Calibration_Data(mpu6050_accel_offset
 }
 
 
-
+/************************************************************************
+ * @fn				- MPU6050_Calibrate
+ *
+ * @brief			- Reads multiple samples to calculate accelerometer offset.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- i2c_Dev_Addr: I2C device address.
+ * @param[out]		- error_Offset: Pointer to struct to store the offsets.
+ * @param[in]		- num_Samples: Number of samples to read for averaging.
+ *
+ * @return			- none
+ *
+ * @Note			- Assuming Z-axis should read 1g (16384 for 2g range)
+ * 					  while flat.
+ ************************************************************************/
 void MPU6050_Calibrate(I2C_HandleTypeDef *hi2c, uint8_t i2c_Dev_Addr, mpu6050_accel_offset_t *error_Offset, uint16_t num_Samples)
 {
     HAL_Delay(250);
@@ -152,7 +273,16 @@ void MPU6050_Calibrate(I2C_HandleTypeDef *hi2c, uint8_t i2c_Dev_Addr, mpu6050_ac
 }
 
 
-
+/************************************************************************
+ * @fn				- MPU6050_Configure_Low_Pass_Filter
+ *
+ * @brief			- Sets the Digital Low Pass Filter (DLPF) bandwidth.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- dlpf: The desired DLPF configuration setting.
+ *
+ * @return			- mpu6050_status_t: Status of the configuration.
+ ************************************************************************/
 mpu6050_status_t MPU6050_Configure_Low_Pass_Filter(I2C_HandleTypeDef *hi2c, mpu6050_dlpf_config_t dlpf)
 {
 	uint8_t value = 0;
@@ -173,6 +303,18 @@ mpu6050_status_t MPU6050_Configure_Low_Pass_Filter(I2C_HandleTypeDef *hi2c, mpu6
 }
 
 
+/************************************************************************
+ * @fn				- MPU6050_Configure_Gyro_Range
+ *
+ * @brief			- Sets the full-scale range for the gyroscope.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- gr: The desired gyroscope full-scale range.
+ *
+ * @return			- mpu6050_status_t: Status of the configuration.
+ *
+ * @Note			- Gyro configuration bits are [4:3] in the config register.
+ ************************************************************************/
 mpu6050_status_t MPU6050_Configure_Gyro_Range(I2C_HandleTypeDef *hi2c, mpu6050_gyro_range_t gr)
 {
 	uint8_t value = 0;
@@ -183,7 +325,7 @@ mpu6050_status_t MPU6050_Configure_Gyro_Range(I2C_HandleTypeDef *hi2c, mpu6050_g
 	}
 
 	value &= ~( (0x3) << 3);
-	value |= (uint8_t)gr;
+	value |= ( (uint8_t)gr << 3);
 	if (_MPU6050_Write_Byte(hi2c, MPU6050_REG_GYRO_CONFIG, value) != MPU6050_OK)
 	{
 		return MPU6050_ERR;
@@ -193,6 +335,18 @@ mpu6050_status_t MPU6050_Configure_Gyro_Range(I2C_HandleTypeDef *hi2c, mpu6050_g
 }
 
 
+/************************************************************************
+ * @fn				- MPU6050_Configure_Accel_Range
+ *
+ * @brief			- Sets the full-scale range for the accelerometer.
+ *
+ * @param[in]		- hi2c: Pointer to the I2C handle.
+ * @param[in]		- ar: The desired accelerometer full-scale range.
+ *
+ * @return			- mpu6050_status_t: Status of the configuration.
+ *
+ * @Note			- Accel configuration bits are [4:3] in the config register.
+ ************************************************************************/
 mpu6050_status_t MPU6050_Configure_Accel_Range(I2C_HandleTypeDef *hi2c, mpu6050_accel_range_t ar)
 {
 	uint8_t value = 0;
@@ -203,7 +357,7 @@ mpu6050_status_t MPU6050_Configure_Accel_Range(I2C_HandleTypeDef *hi2c, mpu6050_
 	}
 
 	value &= ~( (0x3) << 3);
-	value |= (uint8_t)ar;
+	value |= ( (uint8_t)ar << 3);
 	if (_MPU6050_Write_Byte(hi2c, MPU6050_REG_ACCEL_CONFIG, value) != MPU6050_OK)
 	{
 		return MPU6050_ERR;

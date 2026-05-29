@@ -13,7 +13,9 @@
 #include "stm32f4xx.h"
 
 
-
+/**
+ * @brief MPU6050 driver status codes.
+ */
 typedef enum
 {
 	MPU6050_OK,
@@ -21,6 +23,9 @@ typedef enum
 }mpu6050_status_t;
 
 
+/**
+ * @brief Structure to hold raw 16-bit accelerometer data.
+ */
 typedef struct
 {
 	int16_t x;
@@ -29,6 +34,9 @@ typedef struct
 }mpu6050_accel_data_t;
 
 
+/**
+ * @brief Structure to hold calculated accelerometer calibration offsets.
+ */
 typedef struct
 {
 	int16_t x;
@@ -37,6 +45,9 @@ typedef struct
 }mpu6050_accel_offset_t;
 
 
+/**
+ * @brief Digital Low Pass Filter (DLPF) configuration options.
+ */
 typedef enum
 {
 	DLPF_CFG_260HZ = 0,
@@ -49,6 +60,9 @@ typedef enum
 }mpu6050_dlpf_config_t;
 
 
+/**
+ * @brief Accelerometer full-scale range options.
+ */
 typedef enum
 {
 	FS_SEL_250_DEGREES =  0,
@@ -58,6 +72,9 @@ typedef enum
 }mpu6050_gyro_range_t;
 
 
+/**
+ * @brief Accelerometer full-scale range options.
+ */
 typedef enum
 {
 	AFS_SEL_2G =  0,

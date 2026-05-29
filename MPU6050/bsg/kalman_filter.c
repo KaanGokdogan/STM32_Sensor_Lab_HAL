@@ -11,6 +11,18 @@
 
 
 
+/************************************************************************
+ * @fn				- Kalman_Filter_Init
+ *
+ * @brief			- Initializes the Kalman Filter structure with default values.
+ *
+ * @param[in,out]	- kalman_Filter: Pointer to the KalmanFilter structure.
+ *
+ * @return			- none
+ *
+ * @Note			- Sets initial process noise, measurement noise, angle,
+ * 					  and error covariance matrix elements to defaults.
+ ************************************************************************/
 void Kalman_Filter_Init(KalmanFilter* kalman_Filter)
 {
 
@@ -24,6 +36,21 @@ void Kalman_Filter_Init(KalmanFilter* kalman_Filter)
 }
 
 
+/************************************************************************
+ * @fn				- Kalman_Filter_Get_Angle
+ *
+ * @brief			- Calculates the filtered angle using the Kalman algorithm.
+ *
+ * @param[in,out]	- kalman_Filter: Pointer to the KalmanFilter structure.
+ * @param[in]		- new_Angle: The new angle measured by the accelerometer.
+ * @param[in]		- dt: Delta time (time elapsed since last calculation).
+ *
+ * @return			- float: The updated, filtered angle.
+ *
+ * @Note			- Currently, the predict step assumes 0.0f gyro rate.
+ * 					  For a full 1D Kalman filter, a 'rate' parameter from
+ * 					  the gyroscope should be added.
+ ************************************************************************/
 float Kalman_Filter_Get_Angle(KalmanFilter* kalman_Filter, float new_Angle, float dt)
 {
     // Step 1: Predict
