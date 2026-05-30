@@ -53,6 +53,9 @@ mpu6050_accel_offset_t error_Offset;
 float roll_Angle;
 int16_t kalman_roll_Angle;
 int16_t roll_Angle_Filtered;
+float pitch_Angle;
+int16_t kalman_pitch_Angle;
+int16_t pitch_Angle_Filtered;
 
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -105,8 +108,11 @@ int main(void)
   MX_I2C3_Init();
   MX_TIM4_Init();
 
-  KalmanFilter kalman_Filter;
-  Kalman_Filter_Init(&kalman_Filter);
+  KalmanFilter kalman_Filter_Roll;
+  Kalman_Filter_Init(&kalman_Filter_Roll);
+
+  KalmanFilter kalman_Filter_Pitch;
+  Kalman_Filter_Init(&kalman_Filter_Pitch);
 
   if (MPU6050_Init(&hi2c1, MPU6050_I2C_ADDR) != MPU6050_OK)
   {
@@ -173,13 +179,25 @@ int main(void)
 	  printf("Accel X: %d | Y: %d | Z: %d\r\n", g_Accel_Data.x, g_Accel_Data.y, g_Accel_Data.z);
 
 	  roll_Angle = atan2(g_Accel_Data.y, g_Accel_Data.z) * (180.0 / M_PI);
-	  roll_Angle_Filtered = (int16_t)Kalman_Filter_Get_Angle(&kalman_Filter, roll_Angle, dt);
+	  roll_Angle_Filtered = (int16_t)Kalman_Filter_Get_Angle(&kalman_Filter_Roll, roll_Angle, dt);
 	  printf("Roll angle:  %d\r\n", roll_Angle_Filtered);
 
+	  pitch_Angle = atan2(g_Accel_Data.x, sqrt( (g_Accel_Data.y * g_Accel_Data.y ) + (g_Accel_Data.z * g_Accel_Data.z) )) * (180.0 / M_PI);
+	  pitch_Angle_Filtered = (int16_t)Kalman_Filter_Get_Angle(&kalman_Filter_Pitch, pitch_Angle, dt);
+	  printf("Pitch angle:  %d\r\n", pitch_Angle_Filtered);
+
+
 	  uint8_t channel1 = (roll_Angle_Filtered < 0) ? TIM_CHANNEL_2 : TIM_CHANNEL_4;
+	  uint8_t channel2 = (pitch_Angle_Filtered < 0) ? TIM_CHANNEL_1 : TIM_CHANNEL_3;
+
 	  roll_Angle_Filtered = (roll_Angle_Filtered < 0) ? -roll_Angle_Filtered : roll_Angle_Filtered;
+	  pitch_Angle_Filtered = (pitch_Angle_Filtered < 0) ? -pitch_Angle_Filtered : pitch_Angle_Filtered;
+
 	  uint32_t pwm_pulse1 = map(roll_Angle_Filtered, ANGLE_POS_MIN, ANGLE_POS_MAX, PWM_PULSE_MIN, PWM_PULSE_MAX);
+	  uint32_t pwm_pulse2 = map(pitch_Angle_Filtered, ANGLE_POS_MIN, ANGLE_POS_MAX, PWM_PULSE_MIN, PWM_PULSE_MAX);
+
 	  change_pwm_duty_cycle(pwm_pulse1, channel1);
+	  change_pwm_duty_cycle(pwm_pulse2, channel2);
   }
 }
 
