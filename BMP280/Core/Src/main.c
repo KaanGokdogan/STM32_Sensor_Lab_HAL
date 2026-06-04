@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "bmp280.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,7 +43,9 @@
 I2C_HandleTypeDef hi2c1;
 
 /* USER CODE BEGIN PV */
-
+float ortam_sicakligi = 0.0f;
+uint32_t ortam_basinci = 0;
+float ortam_irtifasi = 0.0f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,6 +93,11 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+
+  if (BMP280_Init(&hi2c1, BMP280_I2C_ADDR) != BMP280_OK)
+   {
+	  Error_Handler();
+   }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -100,6 +107,25 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  // 1. Sıcaklığı Oku (Prototipinde hi2c var mıydı diye kontrol et, yoksa sadece &ortam_sicakligi yolla)
+	  if (BMP280_Get_Temperature(&hi2c1, &ortam_sicakligi) != BMP280_OK)
+	{
+	  Error_Handler();
+   }
+
+	// 2. Basıncı Oku
+	  if (BMP280_Get_Pressure(&hi2c1, &ortam_basinci) != BMP280_OK)
+	{
+	  Error_Handler();
+   }
+	// 3. İrtifayı Oku
+	  if (BMP280_Get_Altitude(&hi2c1, &ortam_irtifasi) != BMP280_OK)
+	{
+	  Error_Handler();
+   }
+	// Sensörü ve I2C hattını boğmamak için araya yarım saniye (500 ms) bekleme koyalım
+	HAL_Delay(500);
+
   }
   /* USER CODE END 3 */
 }

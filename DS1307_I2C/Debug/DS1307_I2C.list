@@ -29,9 +29,9 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  12 .ARM.attributes 00000030  00000000  00000000  00005068  2**0
                   CONTENTS, READONLY
- 13 .debug_info   0000c20e  00000000  00000000  00005098  2**0
+ 13 .debug_info   0000c20d  00000000  00000000  00005098  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_abbrev 00001d9a  00000000  00000000  000112a6  2**0
+ 14 .debug_abbrev 00001d9a  00000000  00000000  000112a5  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  15 .debug_aranges 00000d28  00000000  00000000  00013040  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
@@ -142,34 +142,34 @@ Disassembly of section .text:
 
 08000270 <SysTick_Handler>:
  *
+ * @return			- none
+ *
  * @Note			- Mandatory for the HAL library's delay and time
  * 					  calculations.
  ************************************************************************/
-void SysTick_Handler(void)
-{
  8000270:	b580      	push	{r7, lr}
  8000272:	af00      	add	r7, sp, #0
-	HAL_IncTick();
+void SysTick_Handler(void)
  8000274:	f000 fb28 	bl	80008c8 <HAL_IncTick>
-	HAL_SYSTICK_IRQHandler();
+{
  8000278:	f000 fc57 	bl	8000b2a <HAL_SYSTICK_IRQHandler>
-}
+	HAL_IncTick();
  800027c:	bf00      	nop
  800027e:	bd80      	pop	{r7, pc}
 
 08000280 <TIM6_DAC_IRQHandler>:
+ * @param[in]		- none
+ *
  * @return			- none
  *
  * @Note			- Passes the execution to the HAL_TIM_IRQHandler function.
  ************************************************************************/
-void TIM6_DAC_IRQHandler(void)
-{
  8000280:	b580      	push	{r7, lr}
  8000282:	af00      	add	r7, sp, #0
-	HAL_TIM_IRQHandler(&htimer6);
+void TIM6_DAC_IRQHandler(void)
  8000284:	4802      	ldr	r0, [pc, #8]	@ (8000290 <TIM6_DAC_IRQHandler+0x10>)
  8000286:	f001 fed3 	bl	8002030 <HAL_TIM_IRQHandler>
-}
+{
  800028a:	bf00      	nop
  800028c:	bd80      	pop	{r7, pc}
  800028e:	bf00      	nop
@@ -588,7 +588,7 @@ char* Time_To_String(RTC_time_t *rtc_time)
  8000504:	200000d6 	.word	0x200000d6
 
 08000508 <Date_To_String>:
- * formatted date data.
+ * 					  formatted date data.
  *
  * @Note			- Safe to return as the memory is allocated as "static".
  ************************************************************************/
@@ -646,44 +646,44 @@ char* Date_To_String(RTC_date_t *rtc_date)
 
 0800055c <HAL_MspInit>:
  *
+ * @return			- none
+ *
  * @Note			- Set to Priority Group 4 and basic fault exceptions
  * 					  are enabled.
  ************************************************************************/
-void HAL_MspInit(void)
-{
  800055c:	b580      	push	{r7, lr}
  800055e:	af00      	add	r7, sp, #0
+void HAL_MspInit(void)
+{
 	// Here will do low level processor specific inits
-	// 1. Set up the priority grouping of the ARM Cortex MX processor
-	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
  8000560:	2003      	movs	r0, #3
  8000562:	f000 faa1 	bl	8000aa8 <HAL_NVIC_SetPriorityGrouping>
+	// 1. Set up the priority grouping of the ARM Cortex MX processor
+	HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
-	// 2. Enable the required system exceptions of the ARM Cortex MX processor
-	SCB->SHCSR |= 0x7 << 16;		// Usage fault, memory fault and bus fault system exceptions
  8000566:	4b0d      	ldr	r3, [pc, #52]	@ (800059c <HAL_MspInit+0x40>)
  8000568:	6a5b      	ldr	r3, [r3, #36]	@ 0x24
  800056a:	4a0c      	ldr	r2, [pc, #48]	@ (800059c <HAL_MspInit+0x40>)
  800056c:	f443 23e0 	orr.w	r3, r3, #458752	@ 0x70000
  8000570:	6253      	str	r3, [r2, #36]	@ 0x24
+	// 2. Enable the required system exceptions of the ARM Cortex MX processor
+	SCB->SHCSR |= 0x7 << 16;		// Usage fault, memory fault and bus fault system exceptions
 
-	// 3. Configure the priority for the system exceptions
-	HAL_NVIC_SetPriority(MemoryManagement_IRQn,0,0);
  8000572:	2200      	movs	r2, #0
  8000574:	2100      	movs	r1, #0
  8000576:	f06f 000b 	mvn.w	r0, #11
  800057a:	f000 faa0 	bl	8000abe <HAL_NVIC_SetPriority>
-	HAL_NVIC_SetPriority(BusFault_IRQn,0,0);
+	// 3. Configure the priority for the system exceptions
  800057e:	2200      	movs	r2, #0
  8000580:	2100      	movs	r1, #0
  8000582:	f06f 000a 	mvn.w	r0, #10
  8000586:	f000 fa9a 	bl	8000abe <HAL_NVIC_SetPriority>
-	HAL_NVIC_SetPriority(UsageFault_IRQn,0,0);
+	HAL_NVIC_SetPriority(MemoryManagement_IRQn,0,0);
  800058a:	2200      	movs	r2, #0
  800058c:	2100      	movs	r1, #0
  800058e:	f06f 0009 	mvn.w	r0, #9
  8000592:	f000 fa94 	bl	8000abe <HAL_NVIC_SetPriority>
-}
+	HAL_NVIC_SetPriority(BusFault_IRQn,0,0);
  8000596:	bf00      	nop
  8000598:	bd80      	pop	{r7, pc}
  800059a:	bf00      	nop
@@ -691,16 +691,16 @@ void HAL_MspInit(void)
 
 080005a0 <HAL_I2C_MspInit>:
  *
+ * @return			- none
+ *
  * @Note			- Only enables the I2C1 peripheral clock. GPIO pin configurations
  * 					  are handled separately inside the driver's private helper function.
  ************************************************************************/
-void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
-{
  80005a0:	b480      	push	{r7}
  80005a2:	b085      	sub	sp, #20
  80005a4:	af00      	add	r7, sp, #0
  80005a6:	6078      	str	r0, [r7, #4]
-    __HAL_RCC_I2C1_CLK_ENABLE();
+void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
  80005a8:	2300      	movs	r3, #0
  80005aa:	60fb      	str	r3, [r7, #12]
  80005ac:	4b08      	ldr	r3, [pc, #32]	@ (80005d0 <HAL_I2C_MspInit+0x30>)
@@ -713,7 +713,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
  80005bc:	f403 1300 	and.w	r3, r3, #2097152	@ 0x200000
  80005c0:	60fb      	str	r3, [r7, #12]
  80005c2:	68fb      	ldr	r3, [r7, #12]
-}
+{
  80005c4:	bf00      	nop
  80005c6:	3714      	adds	r7, #20
  80005c8:	46bd      	mov	sp, r7
@@ -722,18 +722,18 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
  80005d0:	40023800 	.word	0x40023800
 
 080005d4 <HAL_TIM_Base_MspInit>:
+ * @param[in]		- htimer: Handle structure of the Timer unit to be configured.
+ *
+ * @return			- none
  *
  * @Note			- Low priority (15,0) NVIC interrupt is enabled for
  * 					  the TIM6 unit.
- ************************************************************************/
-void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htimer)
-{
  80005d4:	b580      	push	{r7, lr}
  80005d6:	b084      	sub	sp, #16
  80005d8:	af00      	add	r7, sp, #0
  80005da:	6078      	str	r0, [r7, #4]
-	// 1. Enable the clock for the TIM6 peripheral
-	__HAL_RCC_TIM6_CLK_ENABLE();
+ ************************************************************************/
+void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htimer)
  80005dc:	2300      	movs	r3, #0
  80005de:	60fb      	str	r3, [r7, #12]
  80005e0:	4b0b      	ldr	r3, [pc, #44]	@ (8000610 <HAL_TIM_Base_MspInit+0x3c>)
@@ -746,19 +746,19 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htimer)
  80005f0:	f003 0310 	and.w	r3, r3, #16
  80005f4:	60fb      	str	r3, [r7, #12]
  80005f6:	68fb      	ldr	r3, [r7, #12]
-
-	// 2. Enable the IRQ of TIM6
-	HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
+{
+	// 1. Enable the clock for the TIM6 peripheral
+	__HAL_RCC_TIM6_CLK_ENABLE();
  80005f8:	2036      	movs	r0, #54	@ 0x36
  80005fa:	f000 fa7c 	bl	8000af6 <HAL_NVIC_EnableIRQ>
 
-	// 3. Configure the priority for the TIM6_DAC_IRQ
-	HAL_NVIC_SetPriority(TIM6_DAC_IRQn,15,0);
+	// 2. Enable the IRQ of TIM6
+	HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
  80005fe:	2200      	movs	r2, #0
  8000600:	210f      	movs	r1, #15
  8000602:	2036      	movs	r0, #54	@ 0x36
  8000604:	f000 fa5b 	bl	8000abe <HAL_NVIC_SetPriority>
-}
+
  8000608:	bf00      	nop
  800060a:	3710      	adds	r7, #16
  800060c:	46bd      	mov	sp, r7
@@ -6187,7 +6187,6 @@ void DS1307_Get_Current_Time(RTC_time_t *rtc_time)
  8002508:	687b      	ldr	r3, [r7, #4]
  800250a:	2202      	movs	r2, #2
  800250c:	70da      	strb	r2, [r3, #3]
-
 	}
 	rtc_time->hour = BCD_To_Binary(hours);
  800250e:	7bfb      	ldrb	r3, [r7, #15]
@@ -6197,8 +6196,6 @@ void DS1307_Get_Current_Time(RTC_time_t *rtc_time)
  8002518:	461a      	mov	r2, r3
  800251a:	687b      	ldr	r3, [r7, #4]
  800251c:	709a      	strb	r2, [r3, #2]
-
-
 }
  800251e:	bf00      	nop
  8002520:	3710      	adds	r7, #16
@@ -6319,7 +6316,7 @@ void DS1307_Get_Current_Date(RTC_date_t *rtc_date)
 080025f0 <_DS1307_I2C_Pin_Config>:
  *
  * @Note			- Configures PB6 (SCL) and PB9 (SDA) in Alternate
- * Function Open-Drain mode.
+ * 					 Function Open-Drain mode.
  ************************************************************************/
 static void _DS1307_I2C_Pin_Config(void)
 {
@@ -6407,10 +6404,8 @@ static void _DS1307_I2C_Pin_Config(void)
  800267c:	40020400 	.word	0x40020400
 
 08002680 <ErrorHandler>:
- * @return			- none
- *
- * @Note			- Contains an infinite loop for debugging purposes.
- ************************************************************************/
+
+
 static void ErrorHandler(void)
 {
  8002680:	b480      	push	{r7}
